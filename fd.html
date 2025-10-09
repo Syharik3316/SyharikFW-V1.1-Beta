@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vice Bloody - Управление портами</title>
+    <link rel="stylesheet" href="style.css">
+    <script src=".js"></script>
+</head>
+<body>
+    <div class="side-decoration left"></div>
+    <div class="side-decoration right"></div>
+    <div class="corner-decoration top-left"></div>
+    <div class="corner-decoration bottom-right"></div>
+
+    <div class="container">
+        <div class="team-name">VICE BLOODY</div>
+        <h1>Управление сетевыми портами</h1>
+
+        <div class="status offline" id="service-status">
+            СЕРВИС ПОРТОВ НЕДОСТУПЕН. СТАТУС: OFFLINE
+        </div>
+
+        <p>Панель управления сетевыми портами серверов Vice Bloody</p>
+        <p>Все действия логируются и требуют подтверждения</p>
+
+        <div class="buttons">
+            <button class="btn" onclick="showPortForm()">Добавить порт</button>
+            <button class="btn" onclick="showRemovePortForm()">Удалить порт</button>
+            <button class="btn" onclick="showPortList()">Список портов</button>
+            <button class="btn" onclick="showFirewallControls()">Управление firewall</button>
+        </div>
+
+        <div class="services">
+            <div class="service-item">
+                <h3>Активные порты</h3>
+                <ul class="port-list" id="open-ports"></ul>
+                <div id="forms"></div>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <p>Всего портов</p>
+                        <div class="stat-value" id="total-ports">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <p>Последнее обновление</p>
+                        <div class="stat-value" id="last-update">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Vice Bloody Port Management System | © 2025 Все права защищены</p>
+            <p>Версия: 4.0.0 | Сборка: #VB-PORTS-2025-01-15</p>
+        </footer>
+    </div>
+    <script>
+    (function() {
+        const portsListElement = document.getElementById('open-ports');
+        const totalPortsElement = document.getElementById('total-ports');
+        const lastUpdateElement = document.getElementById('last-update');
+        const formsContainer = document.getElementById('forms');
+        const statusElement = document.getElementById('service-status');
+
+        const apiBase = '';
+        let wellKnownPorts = {};
+        let lastUpdateTs = null;
+        let lastUpdateTimerId = null;
+
+        setOffline();
+        // Периодически опрашиваем статус, чтобы OFFLINE->ONLINE менялся и обратно
+        setInterval(() => refreshStatus(), 2000);
+        // Инициализация: подтянуть справочник и состояние
+        Promise.all([
+            fetch(`${apiBase}/api/well-known`).then(r => r.json()),
+            fetch(`${apiBase}/api/state`).then(r => r.json())
+        ]).then(([dict, state]) => {
+            wellKnownPorts = dict || {};
+            renderPorts(state.ports || []);
+            setLastUpdate(state.lastUpdateTs || Date.now());
+            applyStatus(state.status);
+        }).catch(() => {
+            // Если сервер недоступен — остаёмся OFFLINE, список пуст
+            renderPorts([]);
+            setLastUpdate(null);
+        });
+
+        function renderPorts(ports) {
+            const uniqueSorted = Array.from(new Set(ports)).sort((a,b) => a - b);
+            portsListElement.innerHTML = '';
+            uniqueSorted.forEach(port => {
+                const li = document.createElement('li');
+                const left = document.createElement('span');
+                left.className = 'port-status open';
+                const label = document.createElement('span');
+                const name = wellKnownPorts[port] ? ` (${wellKnownPorts[port]})` : '';
+                label.textContent = ` ${port}${name}`;
+                li.appendChild(left);
+                li.appendChild(label);
+                portsListElement.appendChild(li);
+            });
+            totalPortsElement.textContent = String(uniqueSorted.length);
+        }
+
+        function humanizeSince(ts) {
+            if (!ts) return '—';
+            const seconds = Math.floor((Date.now() - ts) / 1000);
+            if (seconds < 5) return 'только что';
+            if (seconds < 60) return `${seconds} сек назад`;
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes} мин назад`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} ч назад`;
+            const days = Math.floor(hours / 24);
+            return `${days} д назад`;
+        }
+
+        function startLastUpdateTicker() {
+            if (lastUpdateTimerId) clearInterval(lastUpdateTimerId);
+            lastUpdateTimerId = setInterval(() => {
+                lastUpdateElement.textContent = humanizeSince(lastUpdateTs);
+            }, 1000);
+        }
+
+        function setLastUpdate(ts) {
+            lastUpdateTs = ts;
+            lastUpdateElement.textContent = humanizeSince(lastUpdateTs);
+            startLastUpdateTicker();
+        }
+
+        function setOffline() {
+            statusElement.classList.remove('online');
+            statusElement.classList.add('offline');
+            statusElement.textContent = 'СЕРВИС ПОРТОВ НЕДОСТУПЕН. СТАТУС: OFFLINE';
+        }
+
+        function applyStatus(status) {
+            if (status === 'ONLINE') {
+                statusElement.classList.remove('offline');
+                statusElement.classList.add('online');
+                statusElement.textContent = 'СЕРВИС ПОРТОВ АКТИВЕН. СТАТУС: ONLINE';
+            } else {
+                setOffline();
+            }
+        }
+
+        async function refreshStatus() {
+            try {
+                const resp = await fetch(`${apiBase}/api/status`);
+                const json = await resp.json();
+                applyStatus(json.status);
+            } catch (e) {
+                setOffline();
+            }
+        }
+
+        window.showPortForm = function showPortForm() {
+            formsContainer.innerHTML = '';
+            const form = document.createElement('div');
+            form.className = 'port-form';
+            form.innerHTML = `
+                <input id="port-input" class="port-input" type="number" min="1" max="65535" placeholder="Введите номер порта (1-65535)">
+                <button class="btn" id="add-port-btn">Добавить</button>
+            `;
+            formsContainer.appendChild(form);
+            const input = form.querySelector('#port-input');
+            const addBtn = form.querySelector('#add-port-btn');
+            addBtn.addEventListener('click', async () => {
+                const value = Number(input.value);
+                if (!Number.isInteger(value) || value < 1 || value > 65535) {
+                    alert('Укажите корректный номер порта от 1 до 65535');
+                    return;
+                }
+                try {
+                    const resp = await fetch(`${apiBase}/api/ports`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ port: value })
+                    });
+                    const state = await resp.json();
+                    renderPorts(state.ports || []);
+                    setLastUpdate(state.lastUpdateTs || Date.now());
+                } catch (e) {
+                    alert('Сервер недоступен');
+                }
+            });
+        };
+
+        window.showRemovePortForm = function showRemovePortForm() {
+            formsContainer.innerHTML = '';
+            const form = document.createElement('div');
+            form.className = 'port-form';
+            form.innerHTML = `
+                <input id="port-remove-input" class="port-input" type="number" min="1" max="65535" placeholder="Введите порт для удаления">
+                <button class="btn" id="remove-port-btn">Удалить</button>
+            `;
+            formsContainer.appendChild(form);
+            const input = form.querySelector('#port-remove-input');
+            const removeBtn = form.querySelector('#remove-port-btn');
+            removeBtn.addEventListener('click', async () => {
+                const value = Number(input.value);
+                if (!Number.isInteger(value)) {
+                    alert('Укажите корректный номер порта');
+                    return;
+                }
+                try {
+                    const resp = await fetch(`${apiBase}/api/ports/${value}`, { method: 'DELETE' });
+                    const state = await resp.json();
+                    renderPorts(state.ports || []);
+                    setLastUpdate(state.lastUpdateTs || Date.now());
+                } catch (e) {
+                    alert('Сервер недоступен');
+                }
+            });
+        };
+
+        window.showPortList = function showPortList() {
+            formsContainer.innerHTML = '';
+            const hint = document.createElement('div');
+            hint.className = 'port-form';
+            hint.innerHTML = '<p>Обновляю список портов...</p>';
+            formsContainer.appendChild(hint);
+            // Принудительно перечитать state из бэкенда
+            fetch(`${apiBase}/api/state`).then(r => r.json()).then(state => {
+                renderPorts(state.ports || []);
+                setLastUpdate(state.lastUpdateTs || Date.now());
+                applyStatus(state.status);
+                hint.innerHTML = '<p>Список актуализирован.</p>';
+                setTimeout(() => { formsContainer.innerHTML = ''; }, 1500);
+            }).catch(() => {
+                hint.innerHTML = '<p>Сервер недоступен</p>';
+            });
+        };
+
+        window.showFirewallControls = function showFirewallControls() {
+            formsContainer.innerHTML = '';
+            const form = document.createElement('div');
+            form.className = 'port-form';
+            form.innerHTML = `
+                <input id="iface-input" class="port-input" type="text" placeholder="Интерфейс (напр., eth0, lo)">
+                <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                    <button class="btn" id="start-fw-btn">Запустить</button>
+                    <button class="btn" id="stop-fw-btn">Остановить</button>
+                </div>
+            `;
+            formsContainer.appendChild(form);
+            const ifaceInput = form.querySelector('#iface-input');
+            const startBtn = form.querySelector('#start-fw-btn');
+            const stopBtn = form.querySelector('#stop-fw-btn');
+            startBtn.addEventListener('click', async () => {
+                const iface = ifaceInput.value.trim();
+                try {
+                    const resp = await fetch(`${apiBase}/api/firewall/start`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ iface: iface || undefined })
+                    });
+                    const json = await resp.json();
+                    applyStatus(json.status);
+                } catch (e) { alert('Сервер недоступен'); }
+            });
+            stopBtn.addEventListener('click', async () => {
+                try {
+                    const resp = await fetch(`${apiBase}/api/firewall/stop`, { method: 'POST' });
+                    const json = await resp.json();
+                    applyStatus(json.status);
+                } catch (e) { alert('Сервер недоступен'); }
+            });
+        };
+    })();
+    </script>
+</body>
+</html>

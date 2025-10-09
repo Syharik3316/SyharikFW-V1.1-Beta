@@ -1,0 +1,15 @@
+{
+  "name": "vice-bloody-ports",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Firewall UI with simple Node.js backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
+
