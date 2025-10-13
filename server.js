@@ -23,10 +23,10 @@ const wellKnownPorts = {
   143: 'IMAP', 161: 'SNMP', 389: 'LDAP', 443: 'HTTPS', 465: 'SMTPS',
   587: 'SMTP-Submission', 993: 'IMAPS', 995: 'POP3S', 1433: 'MSSQL',
   1521: 'Oracle DB', 2049: 'NFS', 2181: 'Zookeeper', 2379: 'etcd',
-  2380: 'etcd-peer', 27017: 'MongoDB', 3000: 'Node Dev', 3306: 'MySQL',
+  2380: 'etcd-peer', 27017: 'MongoDB', 3000: 'Firewall (dont off)', 3306: 'MySQL',
   3389: 'RDP', 5432: 'PostgreSQL', 56379: 'Redis-Sentinel', 5672: 'RabbitMQ',
   5900: 'VNC', 6379: 'Redis', 8000: 'HTTP-Alt', 8080: 'HTTP-Alt', 9000: 'App',
-  9200: 'Elasticsearch', 9300: 'ES-Transport'
+  9200: 'Elasticsearch', 9300: 'ES-Transport', 2000: 'CISCO', 8291: 'Mikrotik (WinBox)'
 };
 
 function readState() {
