@@ -29,7 +29,7 @@ def show_menu():
     print("║ 1. Показать текущие настройки    ║")
     print("║ 2. Доб. разрешенные порты        ║")
     print("║ 3. Убр. разрешенные порты        ║")
-    print("║ 4. Запустить firewall            ║")
+    print("║ 4. Запустить SyharikFW           ║")
     print("║ 5. Просмотр логов                ║")
     print("║ 6. Дополнительные настройки      ║")
     print("║ 7. Выход                         ║")
@@ -112,7 +112,7 @@ def update_ports(action, ports):
 
 def show_settings():
     default_ports, custom_ports, strict_mode, allow_dns, allow_icmp = load_config()
-    print("\nТекущие настройки firewall'a:")
+    print("\nТекущие настройки SyharikFW:")
     print(" ┌──────────────────────────────────┐")
     print(f"│ Всё кроме L7: {'Включено' if strict_mode else 'Отключено':<18}")
     print(f"│ Разрешить DNS: {'Да' if allow_dns else 'Нет':<24}")
@@ -243,7 +243,7 @@ def run_firewall(interface_arg: str = None):
         input("\nНажмите Enter для продолжения...")
         return
 
-    print(f"\nFirewall включен на {interface}")
+    print(f"\nSyharikFW включен на интерфейсе {interface}")
     print(f"Разрешенные порты: {allowed_ports}")
     print(f"Всё кроме L7: {'Включено' if strict_mode else 'Отключено'}")
     print(f"DNS разрешен: {'Да' if allow_dns else 'Нет'}")
@@ -275,7 +275,7 @@ def run_firewall(interface_arg: str = None):
         except Exception:
             pass
         write_status('OFFLINE')
-        print("\nFirewall остановлен")
+        print("\nSyharikFW остановлен")
         try:
             input("\nНажмите Enter для продолжения...")
         except Exception:
@@ -472,7 +472,7 @@ if __name__ == "__main__":
             print(read_status())
         elif sys.argv[1] in ['--help', '-h']:
             print("Использование:")
-            print("  Активация firewall: sudo ./firewall.py [interface]")
+            print("  Активация SyharikFW: sudo ./firewall.py [interface]")
             print("  Добавление портов: sudo ./firewall.py --add port1,port2,...")
             print("  Удаление портов: sudo ./firewall.py --del port1,port2,...")
             print("  Показ настроек: sudo ./firewall.py --list")
