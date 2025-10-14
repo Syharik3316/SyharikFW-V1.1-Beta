@@ -24,7 +24,6 @@ def show_menu():
     clear_screen()
     print("╔══════════════════════════════════╗")
     print("║  Менеджер firewall'a by syharik  ║")
-    print("║             V1.0 Beta            ║")
     print("╠══════════════════════════════════╣")
     print("║ 1. Показать текущие настройки    ║")
     print("║ 2. Доб. разрешенные порты        ║")
@@ -58,7 +57,7 @@ def load_config():
     
     if not config.has_section('PORTS'):
         config['PORTS'] = {
-            'default_ports': '80,443',
+            'default_ports': '80,443,3000',
             'custom_ports': ''
         }
         with open(CONFIG_FILE, 'w') as f:
@@ -90,7 +89,7 @@ def update_ports(action, ports):
     config.read(CONFIG_FILE)
     
     if not config.has_section('PORTS'):
-        config['PORTS'] = {'default_ports': '80,443', 'custom_ports': ''}
+        config['PORTS'] = {'default_ports': '80,443,3000', 'custom_ports': ''}
     
     current_ports = set()
     if config['PORTS']['custom_ports'].strip():

@@ -23,10 +23,10 @@ const wellKnownPorts = {
   143: 'IMAP', 161: 'SNMP', 389: 'LDAP', 443: 'HTTPS', 465: 'SMTPS',
   587: 'SMTP-Submission', 993: 'IMAPS', 995: 'POP3S', 1433: 'MSSQL',
   1521: 'Oracle DB', 2049: 'NFS', 2181: 'Zookeeper', 2379: 'etcd',
-  2380: 'etcd-peer', 27017: 'MongoDB', 3000: 'Firewall (dont off)', 3306: 'MySQL',
+  2380: 'etcd-peer', 27017: 'MongoDB', 3000: 'Node Dev (Dont off)', 3306: 'MySQL',
   3389: 'RDP', 5432: 'PostgreSQL', 56379: 'Redis-Sentinel', 5672: 'RabbitMQ',
   5900: 'VNC', 6379: 'Redis', 8000: 'HTTP-Alt', 8080: 'HTTP-Alt', 9000: 'App',
-  9200: 'Elasticsearch', 9300: 'ES-Transport', 2000: 'CISCO', 8291: 'Mikrotik (WinBox)'
+  9200: 'Elasticsearch', 9300: 'ES-Transport'
 };
 
 function readState() {
@@ -104,6 +104,13 @@ app.post('/api/ports', async (req, res) => {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid port' });
   }
+  
+  // Проверяем статус firewall - нельзя менять порты во время работы
+  const status = await getFirewallStatus();
+  if (status === 'ONLINE') {
+    return res.status(409).json({ error: 'Cannot modify ports while firewall is running' });
+  }
+  
   try {
     await execFirewall(['--add', String(port)]);
     const state = readState();
@@ -121,6 +128,13 @@ app.delete('/api/ports/:port', async (req, res) => {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     return res.status(400).json({ error: 'Invalid port' });
   }
+  
+  // Проверяем статус firewall - нельзя менять порты во время работы
+  const status = await getFirewallStatus();
+  if (status === 'ONLINE') {
+    return res.status(409).json({ error: 'Cannot modify ports while firewall is running' });
+  }
+  
   try {
     await execFirewall(['--del', String(port)]);
     const state = readState();
@@ -140,19 +154,23 @@ app.get('/api/status', async (req, res) => {
 // Запуск/остановка firewall-процесса (Linux/Unix)
 app.post('/api/firewall/start', async (req, res) => {
   try {
-    if (firewallProc && !firewallProc.killed) {
-      return res.status(409).json({ error: 'Already running' });
+    // Проверяем, не запущен ли уже firewall
+    const currentStatus = await getFirewallStatus();
+    if (currentStatus === 'ONLINE') {
+      return res.status(409).json({ error: 'Firewall already running' });
     }
-    const iface = (req.body && req.body.iface) ? String(req.body.iface) : undefined;
-    const args = [firewallPy, '--run'];
-    if (iface) args.push(iface);
-    // Запуск как отдельный процесс с sudo (нужно для eBPF/XDP)
-    firewallProc = spawn('sudo', ['python3', ...args], { cwd: rootDir, stdio: 'ignore', detached: true });
-    firewallProc.unref();
-    // Дадим немного времени на инициализацию и вернём статус
+    
+    const iface = (req.body && req.body.iface) ? String(req.body.iface) : 'lo';
+    
+    // Запуск через execFile с sudo
+    const { stdout, stderr } = await execFirewall(['--run', iface]);
+    
+    // Дадим время на инициализацию
     setTimeout(async () => {
-      res.json({ status: await getFirewallStatus() });
-    }, 800);
+      const status = await getFirewallStatus();
+      res.json({ status, message: 'Firewall started' });
+    }, 1000);
+    
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -160,15 +178,28 @@ app.post('/api/firewall/start', async (req, res) => {
 
 app.post('/api/firewall/stop', async (req, res) => {
   try {
-    if (firewallProc && !firewallProc.killed) {
-      try { process.kill(firewallProc.pid, 'SIGINT'); } catch (_) {}
-    }
-    firewallProc = null;
-    setTimeout(async () => {
-      res.json({ status: await getFirewallStatus() });
-    }, 500);
+    // Останавливаем через SIGTERM всем процессам python3 firewall.py
+    const { exec } = require('child_process');
+    exec('sudo pkill -f "python3.*firewall.py.*--run"', (error, stdout, stderr) => {
+      setTimeout(async () => {
+        const status = await getFirewallStatus();
+        res.json({ status, message: 'Firewall stopped' });
+      }, 500);
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// API для получения логов
+app.get('/api/logs', (req, res) => {
+  try {
+    const logPath = path.join(rootDir, 'firewall.log');
+    const logs = fs.readFileSync(logPath, 'utf8');
+    const lines = logs.split('\n').filter(line => line.trim()).slice(-100); // Последние 100 строк
+    res.json({ logs: lines });
+  } catch (e) {
+    res.json({ logs: [], error: 'Log file not found or empty' });
   }
 });
 

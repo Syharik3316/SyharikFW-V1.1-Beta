@@ -25,10 +25,11 @@
         <p>Все действия логируются и требуют подтверждения</p>
 
         <div class="buttons">
-            <button class="btn" onclick="showPortForm()">Добавить порт</button>
-            <button class="btn" onclick="showRemovePortForm()">Удалить порт</button>
+            <button class="btn" id="add-port-btn" onclick="showPortForm()">Добавить порт</button>
+            <button class="btn" id="remove-port-btn" onclick="showRemovePortForm()">Удалить порт</button>
             <button class="btn" onclick="showPortList()">Список портов</button>
             <button class="btn" onclick="showFirewallControls()">Управление firewall</button>
+            <button class="btn" onclick="window.open('/logs.html', '_blank')">Просмотр логов</button>
         </div>
 
         <div class="services">
@@ -136,12 +137,21 @@
         }
 
         function applyStatus(status) {
+            const addBtn = document.getElementById('add-port-btn');
+            const removeBtn = document.getElementById('remove-port-btn');
+            
             if (status === 'ONLINE') {
                 statusElement.classList.remove('offline');
                 statusElement.classList.add('online');
                 statusElement.textContent = 'СЕРВИС ПОРТОВ АКТИВЕН. СТАТУС: ONLINE';
+                // Блокируем кнопки управления портами
+                if (addBtn) addBtn.disabled = true;
+                if (removeBtn) removeBtn.disabled = true;
             } else {
                 setOffline();
+                // Разблокируем кнопки управления портами
+                if (addBtn) addBtn.disabled = false;
+                if (removeBtn) removeBtn.disabled = false;
             }
         }
 
@@ -178,9 +188,17 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ port: value })
                     });
+                    if (resp.status === 409) {
+                        alert('Нельзя изменять порты во время работы firewall!');
+                        return;
+                    }
                     const state = await resp.json();
-                    renderPorts(state.ports || []);
-                    setLastUpdate(state.lastUpdateTs || Date.now());
+                    if (resp.ok) {
+                        renderPorts(state.ports || []);
+                        setLastUpdate(state.lastUpdateTs || Date.now());
+                    } else {
+                        alert('Ошибка: ' + (state.error || 'Неизвестная ошибка'));
+                    }
                 } catch (e) {
                     alert('Сервер недоступен');
                 }
@@ -206,9 +224,17 @@
                 }
                 try {
                     const resp = await fetch(`${apiBase}/api/ports/${value}`, { method: 'DELETE' });
+                    if (resp.status === 409) {
+                        alert('Нельзя изменять порты во время работы firewall!');
+                        return;
+                    }
                     const state = await resp.json();
-                    renderPorts(state.ports || []);
-                    setLastUpdate(state.lastUpdateTs || Date.now());
+                    if (resp.ok) {
+                        renderPorts(state.ports || []);
+                        setLastUpdate(state.lastUpdateTs || Date.now());
+                    } else {
+                        alert('Ошибка: ' + (state.error || 'Неизвестная ошибка'));
+                    }
                 } catch (e) {
                     alert('Сервер недоступен');
                 }
