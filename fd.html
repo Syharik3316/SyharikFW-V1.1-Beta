@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vice Bloody - Управление портами</title>
+    <title>SyharikHS - Управление firewall'ом</title>
     <link rel="stylesheet" href="style.css">
     <script src=".js"></script>
 </head>
@@ -14,21 +14,21 @@
     <div class="corner-decoration bottom-right"></div>
 
     <div class="container">
-        <div class="team-name">VICE BLOODY</div>
-        <h1>Управление сетевыми портами</h1>
+        <div class="team-name">SYHARIKHS</div>
+        <h1>Удобное управление firewall'ом</h1>
 
         <div class="status offline" id="service-status">
-            СЕРВИС ПОРТОВ НЕДОСТУПЕН. СТАТУС: OFFLINE
+            СЕРВИС firewall'a НЕДОСТУПЕН. СТАТУС: OFFLINE
         </div>
 
-        <p>Панель управления сетевыми портами серверов Vice Bloody</p>
+        <p>Панель управления firewall'ом серверов SyharikHS</p>
         <p>Все действия логируются</p>
 
         <div class="buttons">
             <button class="btn" id="add-port-btn" onclick="showPortForm()">Добавить порт</button>
             <button class="btn" id="remove-port-btn" onclick="showRemovePortForm()">Удалить порт</button>
             <button class="btn" onclick="showPortList()">Список портов</button>
-            <button class="btn" onclick="showFirewallControls()">Управление firewall</button>
+            <button class="btn" onclick="showFirewallControls()">Управление firewall'ом</button>
             <button class="btn" onclick="window.open('/logs.html', '_blank')">Просмотр логов</button>
         </div>
 
@@ -52,8 +52,8 @@
         </div>
 
         <footer>
-            <p>Vice Bloody Port Management System | © 2025 Все права защищены</p>
-            <p>Версия: 1.1 Beta | Сборка: #VB-PORTS-14-10-2025</p>
+            <p>SyharikHS Firewall Management System | © 2025 Все права защищены</p>
+            <p>Версия: 1.1 Beta | Сборка: #SyHS-PORTS-14-10-2025</p>
         </footer>
     </div>
     <script>
@@ -133,7 +133,7 @@
         function setOffline() {
             statusElement.classList.remove('online');
             statusElement.classList.add('offline');
-            statusElement.textContent = 'СЕРВИС ПОРТОВ НЕДОСТУПЕН. СТАТУС: OFFLINE';
+            statusElement.textContent = 'СЕРВИС Firewall'a НЕДОСТУПЕН. СТАТУС: OFFLINE';
         }
 
         function applyStatus(status) {
@@ -143,7 +143,7 @@
             if (status === 'ONLINE') {
                 statusElement.classList.remove('offline');
                 statusElement.classList.add('online');
-                statusElement.textContent = 'СЕРВИС ПОРТОВ АКТИВЕН. СТАТУС: ONLINE';
+                statusElement.textContent = 'СЕРВИС Firewall'a АКТИВЕН. СТАТУС: ONLINE';
                 // Блокируем кнопки управления портами
                 if (addBtn) addBtn.disabled = true;
                 if (removeBtn) removeBtn.disabled = true;
@@ -189,7 +189,7 @@
                         body: JSON.stringify({ port: value })
                     });
                     if (resp.status === 409) {
-                        alert('Нельзя изменять порты во время работы firewall'a!');
+                        alert('Нельзя изменять порты во время работы firewall!');
                         return;
                     }
                     const state = await resp.json();
@@ -225,7 +225,7 @@
                 try {
                     const resp = await fetch(`${apiBase}/api/ports/${value}`, { method: 'DELETE' });
                     if (resp.status === 409) {
-                        alert('Нельзя изменять порты во время работы firewall'a!');
+                        alert('Нельзя изменять порты во время работы firewall!');
                         return;
                     }
                     const state = await resp.json();
